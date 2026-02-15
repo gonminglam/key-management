@@ -29,16 +29,9 @@
 const { useState, useEffect, useRef } = React;
 
 const SUPABASE_URL = "https://prarxhhwfwvyeylimoxk.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Yee4j1rDapRllmk_GcmAkA_NIxRnN5w";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByYXJ4aGh3Znd2eWV5bGltb3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTI2ODgsImV4cCI6MjA4NjcyODY4OH0.WapBnDBSbEBu5foqFubi6WqlwfKECB4XoUtgmZy3ZJE";
 
-let supabase = null;
-let dbReady = false;
-try {
-  if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes("YOUR_")) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    dbReady = true;
-  }
-} catch (e) { console.error("Supabase init error:", e); }
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const FLOOR_COLORS = {
   "1F": { bg: "#EEF2FF", accent: "#4F46E5", light: "#C7D2FE", text: "#3730A3", tag: "#E0E7FF" },
@@ -164,7 +157,6 @@ function App() {
   const skipSync = useRef(false);
 
   async function loadFromDB() {
-    if (!dbReady) { setLoaded(true); return; }
     try {
       const { data: rows, error } = await supabase.from("app_data").select("*");
       if (error) throw error;
@@ -180,7 +172,6 @@ function App() {
   }
 
   async function saveToDB(dataKey, value) {
-    if (!dbReady) return;
     try { await supabase.from("app_data").upsert({ key: dataKey, value }); setSyncStatus("online"); }
     catch (e) { console.error("Save error:", e); setSyncStatus("offline"); }
   }
@@ -188,7 +179,6 @@ function App() {
   useEffect(() => { loadFromDB(); }, []);
 
   useEffect(() => {
-    if (!dbReady) return;
     const channel = supabase.channel("realtime_sync").on("postgres_changes", { event: "*", schema: "public", table: "app_data" }, (payload) => {
       if (skipSync.current) return;
       const row = payload.new;
@@ -212,7 +202,6 @@ function App() {
   function handleImport() { const input = document.createElement("input"); input.type = "file"; input.accept = ".json"; input.onchange = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = (ev) => { try { const d = JSON.parse(ev.target.result); if (d.keys) syncKeys(d.keys); if (d.logs) syncLogs(d.logs); alert("导入成功！"); } catch { alert("格式错误"); } }; r.readAsText(f); }; input.click(); }
 
   if (!loaded) return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 12 }}><div style={{ fontSize: 40 }}>🔐</div><div style={{ color: "#94A3B8" }}>加载中...</div></div>;
-  if (!dbReady) return (<div style={{ maxWidth: 500, margin: "60px auto", padding: 24 }}><div style={{ background: "#FEF3C7", border: "2px solid #F59E0B", borderRadius: 12, padding: 24 }}><h2 style={{ margin: "0 0 12px", fontSize: 18, color: "#92400E" }}>⚠️ Supabase 尚未配置</h2><p style={{ color: "#78350F", fontSize: 14, lineHeight: 1.6 }}>请打开 index.html，找到顶部的 SUPABASE_URL 和 SUPABASE_ANON_KEY，替换为你的 Supabase 配置。</p></div></div>);
 
   function renderDashboard() {
     return (<div>
